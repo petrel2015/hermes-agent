@@ -1,0 +1,28 @@
+agent/auxiliary_client.py
+  s_cd3e6b9b54dd92::t_2394a8a971635e 2567-2569,2577,2583-2651,2684,2733,8159-8160
+  s_cd3e6b9b54dd92::t_d1dd95ec8eeada 8061-8064
+  s_cd3e6b9b54dd92::t_3bb766429b48cf 2578-2582
+agent/context_compressor.py
+  s_cd3e6b9b54dd92::t_d1dd95ec8eeada 3683-3687,3693-3698
+  s_cd3e6b9b54dd92::t_2394a8a971635e 3670
+tests/agent/test_compression_auth_error_attribution.py
+  s_cd3e6b9b54dd92::t_2394a8a971635e 36-37,412-504,507-510,575-577
+agent/conversation_compression.py
+  s_cd3e6b9b54dd92::t_d1dd95ec8eeada 1265-1268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "935aadb95339e3a7ce35d4eb9ed05bcaac6dfb69",
+  "prompts": {},
+  "sessions": {
+    "s_cd3e6b9b54dd92": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc54f-a895-7d42-b06b-1f9ab53581b2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "yu2.hong <yu2.hong@ly.com>"
+    }
+  }
+}
