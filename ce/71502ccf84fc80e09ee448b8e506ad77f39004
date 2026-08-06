@@ -1,0 +1,14 @@
+agent/auxiliary_client.py
+  h_47dbf5e7272ced 8686,8732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ce71502ccf84fc80e09ee448b8e506ad77f39004",
+  "prompts": {},
+  "humans": {
+    "h_47dbf5e7272ced": {
+      "author": "yu2.hong <yu2.hong@ly.com>"
+    }
+  }
+}
