@@ -375,5 +375,6 @@ class ProviderProfile:
             items = data if isinstance(data, list) else data.get("data", [])
             return [m["id"] for m in items if isinstance(m, dict) and "id" in m]
         except Exception as exc:
-            logger.debug("fetch_models(%s): %s", self.name, exc)
+            logger.warning("fetch_models(%s) failed (%s: %s); falling back to static catalogs",
+                           self.name, type(exc).__name__, exc)
             return None
