@@ -1508,6 +1508,14 @@ _PROVIDER_CATALOG_FETCHERS: dict[str, Any] = {
 _OPENCODE_FREE_EXCLUDED_MODELS = frozenset({"ox-alpha-free", "deepseek-v4-flash-free"})
 
 
+class _DegradedCatalogList(list):
+    """Catalog NOT verified by a live fetch (live failed / no key): a static curated,
+    models.dev-merged, or profile ``fallback_models`` floor. Served so the picker stays
+    usable during an outage, but type-tagged so every disk-cache writer refuses to
+    persist it — pinning it would serve an unverified list for TTL + stale-serve
+    windows after the network healed, hiding new subscription models."""
+
+
 def _profile_live_catalog(normalized: str) -> Optional[list[str]]:
     """Generic live fetch for any provider registered in providers/ with ``auth_type="api_key"``.
 
@@ -1516,6 +1524,11 @@ def _profile_live_catalog(normalized: str) -> Optional[list[str]]:
     ``_LIVE_FIRST_PICKER_PROVIDERS`` (OpenCode Zen/Go, authoritative live API) live-first so stale
     curated entries stop polluting the top. Plugin providers without a static entry use the
     profile's ``fallback_models`` as the curated list (Fireworks lists an image model first).
+
+    A FAILED live fetch returns None (never the profile's fallback_models): the caller falls
+    through to the static curated/models.dev path, and ``cached_provider_model_ids`` treats None
+    as "nothing learned" — pinning a transient timeout's fallback list into the disk cache made
+    new subscription models vanish from the picker long after the network healed.
     """
     from providers import get_provider_profile
 
@@ -1532,17 +1545,27 @@ def _profile_live_catalog(normalized: str) -> Optional[list[str]]:
         except Exception as exc:  # a failed subprocess launch degrades to the curated list, like api_key below
             logger.debug("external_process catalog fetch failed for %s: %s", normalized, exc)
             live = None
-        return list(live) if live else (list(profile.fallback_models) or None)
+        # Same never-pin rule as api_key below: a failed launch falls through to the static
+        # path instead of returning fallback_models, which the disk cache would pin.
+        if not live:
+            return None
+        return list(live)
     if not (profile.auth_type == "api_key" and profile.base_url):
         return list(profile.fallback_models) or None
     api_key, base_url = _api_key_credentials(normalized)
     live = None
     if api_key:
-        # A raising catalog override degrades like a None return: fallback_models, not an empty picker.
+        # A raising catalog override degrades like a None return (never pin a fallback floor).
         try:
             live = profile.fetch_models(api_key=api_key, base_url=base_url or profile.base_url or None)
         except Exception:
             live = None
+    if not live:
+        # A FAILED live fetch returns None (never the profile's fallback_models): the static
+        # path below serves a _DegradedCatalogList floor and the disk cache never pins it —
+        # pinning a transient timeout's fallback list made new subscription models vanish from
+        # the picker long after the network healed.
+        return None
     return merge_profile_catalog(normalized, profile, live)
 
 
@@ -1591,11 +1614,25 @@ def provider_model_ids(provider: Optional[str], *, force_refresh: bool = False) 
     # _PROVIDER_MODELS entry fall back to the profile's curated fallback_models so their agentic picks lead
     # the picker instead of whatever the live catalog happens to return first (e.g. Fireworks lists an image
     # model, flux-*, ahead of its chat models).
+    # Static path, reached only when the live fetch failed (or no key): curated list first
+    # (zai/kimi curated-first intent, #46309 / commit 658ac1d86), merged with models.dev for
+    # _MODELS_DEV_PREFERRED providers; profile fallback_models only when no static data exists
+    # (nebius-token-factory). The result is tagged _DegradedCatalogList — usable for THIS picker
+    # open, never persisted by the disk cache (a transient failure must not be pinned).
     curated_static = list(_PROVIDER_MODELS.get(normalized, []))
-    if normalized not in _MODELS_DEV_PREFERRED:
-        return curated_static
-    merged = _merge_with_models_dev(normalized, curated_static)
-    return _xai_finalize_catalog(merged) if normalized in {"xai", "xai-oauth"} else merged
+    if normalized in _MODELS_DEV_PREFERRED:
+        merged = _merge_with_models_dev(normalized, curated_static)
+        curated_static = _xai_finalize_catalog(merged) if normalized in {"xai", "xai-oauth"} else merged
+    if curated_static:
+        return _DegradedCatalogList(curated_static)
+    try:
+        from providers import get_provider_profile
+        profile = get_provider_profile(normalized)
+    except Exception:
+        profile = None
+    if profile is not None and getattr(profile, "fallback_models", None):
+        return _DegradedCatalogList(profile.fallback_models)
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -1648,6 +1685,9 @@ def _spawn_swr_refresh(cache_key: str, refresh_fn=None) -> None:
 
     def _default_refresh():
         live = provider_model_ids(cache_key, force_refresh=True)
+        if isinstance(live, _DegradedCatalogList):
+            # Degraded floor from a failed fetch — refreshing must not re-pin it.
+            return None
         if live or (cache_key == "ollama" and _ollama_native_probe_reachable()):
             return _cache_entry(_credential_fingerprint(cache_key), live or [])
         return None
@@ -1797,10 +1837,14 @@ def _store_cache_entry(cache_key: str, entry: dict, cache: Optional[dict] = None
 
 def update_provider_cache_entry(provider: str, models: list[str]) -> None:
     """Thread-safe single-entry update for parallel prefetch workers: load-modify-save under a lock
-    so concurrent fetches don't clobber each other's rows. Best-effort, silent on any error."""
+    so concurrent fetches don't clobber each other's rows. Best-effort, silent on any error.
+    A :class:`_DegradedCatalogList` (degraded live-fetch floor) is refused — same
+    never-pin-a-transient-failure contract as ``cached_provider_model_ids``."""
     try:
         normalized = normalize_provider(provider) or (provider or "")
         if not normalized or not models:
+            return
+        if isinstance(models, _DegradedCatalogList):
             return
         fp = _credential_fingerprint(normalized)
         with _cache_write_lock:
@@ -1864,6 +1908,15 @@ def cached_provider_model_ids(
         return []
 
     live = provider_model_ids(normalized, force_refresh=force_refresh)
+    if isinstance(live, _DegradedCatalogList):
+        # Degraded (live fetch failed, static floor only): a stale same-fingerprint row is a
+        # REAL earlier live result and beats the static floor; the floor beats an empty picker.
+        # Either way nothing is persisted — a transient failure must not be pinned. The tag is
+        # preserved on the returned list so downstream writers (parallel prefetch's
+        # update_provider_cache_entry) refuse it too.
+        if _cache_entry_valid(entry, fp):
+            return [model for model in entry["models"] if not _model_requires_account_discovery(normalized, model)]
+        return _DegradedCatalogList(live)
     if live:
         _store_cache_entry(normalized, _cache_entry(fp, live, now), cache)
         return list(live)
