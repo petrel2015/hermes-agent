@@ -1,0 +1,16 @@
+hermes_cli/models.py
+  h_20d06383e3c86b 1495-1502,1511-1515,1524-1526,1565-1569,1571-1583,1636-1638,1776-1778,1783-1784,1847-1855
+tests/hermes_cli/test_profile_live_catalog_no_pin.py
+  h_20d06383e3c86b 1-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7d1b8cce280e5974ba68e0c850a455fde157005a",
+  "prompts": {},
+  "humans": {
+    "h_20d06383e3c86b": {
+      "author": "Yu Hong <petrel2015@foxmail.com>"
+    }
+  }
+}
