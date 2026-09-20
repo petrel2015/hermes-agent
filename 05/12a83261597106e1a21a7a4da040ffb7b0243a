@@ -1,0 +1,14 @@
+plugins/model-providers/zai/__init__.py
+  h_20d06383e3c86b 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0512a83261597106e1a21a7a4da040ffb7b0243a",
+  "prompts": {},
+  "humans": {
+    "h_20d06383e3c86b": {
+      "author": "Yu Hong <petrel2015@foxmail.com>"
+    }
+  }
+}
