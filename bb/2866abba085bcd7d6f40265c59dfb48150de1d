@@ -1,0 +1,14 @@
+providers/base.py
+  h_20d06383e3c86b 378-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bb2866abba085bcd7d6f40265c59dfb48150de1d",
+  "prompts": {},
+  "humans": {
+    "h_20d06383e3c86b": {
+      "author": "Yu Hong <petrel2015@foxmail.com>"
+    }
+  }
+}
