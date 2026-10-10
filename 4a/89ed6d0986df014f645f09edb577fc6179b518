@@ -1,0 +1,25 @@
+agent/context_compressor_attribution.py
+  s_cd3e6b9b54dd92::t_cbb7a0a637aa9f 113-115,117-120
+  s_cd3e6b9b54dd92::t_30a19630e1f6f2 121
+tests/agent/test_compression_review_routes.py
+  s_cd3e6b9b54dd92::t_11723e31cb6fc3 83-101
+  s_cd3e6b9b54dd92::t_53efad16ed1a9d 199
+agent/conversation_compression_diagnostics.py
+  s_cd3e6b9b54dd92::t_cbb7a0a637aa9f 146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a89ed6d0986df014f645f09edb577fc6179b518",
+  "prompts": {},
+  "sessions": {
+    "s_cd3e6b9b54dd92": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc54f-a895-7d42-b06b-1f9ab53581b2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Yu Hong <petrel2015@foxmail.com>"
+    }
+  }
+}
